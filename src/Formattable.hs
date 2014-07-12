@@ -2,11 +2,25 @@
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeFamilies      #-}
+
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Formattable
+-- Copyright   :  Soostone Inc
+-- License     :  BSD3
+--
+-- Maintainer  :  libs@soostone.com
+-- Stability   :  experimental
+--
+-- Practical formatting interface for output values intended for human
+-- consumption. We try to support several variants often required by
+-- real-world applications.
+----------------------------------------------------------------------------
+
 module Formattable
     ( module Formattable
     , module Formattable.NumFormat
     ) where
-
 
 -------------------------------------------------------------------------------
 import           Data.Int

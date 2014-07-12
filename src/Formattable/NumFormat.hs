@@ -3,33 +3,46 @@
 {-# LANGUAGE RecordWildCards    #-}
 {-# LANGUAGE TemplateHaskell    #-}
 {-# LANGUAGE TypeFamilies       #-}
+
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Formattable.NumFormat
+-- Copyright   :  Soostone Inc
+-- License     :  BSD3
+--
+-- Maintainer  :  libs@soostone.com
+-- Stability   :  experimental
+--
+-- Formatting for numeric values.
+----------------------------------------------------------------------------
+
 module Formattable.NumFormat
-  ( NumFormat(..)
-  , NumStyle(..)
-  , autoStyle
-  , Precision(..)
-  , NegativeStyle(..)
+    ( NumFormat(..)
+    , NumStyle(..)
+    , autoStyle
+    , Precision(..)
+    , NegativeStyle(..)
 
-  -- * Lenses
-  , nfUnits
-  , nfPrefix
-  , nfSuffix
-  , nfThouSep
-  , nfDecSep
-  , nfStyle
-  , nfPrec
-  , nfNegStyle
+    -- * Lenses
+    , nfUnits
+    , nfPrefix
+    , nfSuffix
+    , nfThouSep
+    , nfDecSep
+    , nfStyle
+    , nfPrec
+    , nfNegStyle
 
-  -- * Common formats
-  , rawIntFmt
-  , intFmt
-  , percentFmt
-  , usdFmt
+    -- * Common formats
+    , rawIntFmt
+    , intFmt
+    , percentFmt
+    , usdFmt
 
-  -- * Formatting functions
-  , formatPct
-  , formatNum
-  ) where
+    -- * Formatting functions
+    , formatPct
+    , formatNum
+    ) where
 
 
 -------------------------------------------------------------------------------
