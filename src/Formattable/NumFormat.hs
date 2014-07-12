@@ -34,7 +34,7 @@ module Formattable.NumFormat
 
 -------------------------------------------------------------------------------
 import           Control.Lens
-import           Data.Default
+import           Data.Default.Class
 import           Data.Double.Conversion.Text
 import           Data.Monoid
 import           Data.Text                   (Text)
