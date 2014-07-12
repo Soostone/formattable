@@ -4,11 +4,11 @@
 {-# LANGUAGE TemplateHaskell    #-}
 {-# LANGUAGE TypeFamilies       #-}
 module Formattable.NumFormat
-  ( NumStyle(..)
+  ( NumFormat(..)
+  , NumStyle(..)
   , autoStyle
   , Precision(..)
   , NegativeStyle(..)
-  , NumFormat(..)
 
   -- * Lenses
   , nfUnits
@@ -28,7 +28,6 @@ module Formattable.NumFormat
 
   -- * Formatting functions
   , formatPct
-  , formatCur
   , formatNum
   ) where
 
@@ -45,6 +44,7 @@ import           Data.Typeable
 
 
 -------------------------------------------------------------------------------
+-- | Data structure describing available styles of number formatting.
 data NumStyle
     = Exponent
       -- ^ Format with scientific notation
@@ -59,11 +59,13 @@ data NumStyle
 
 
 ------------------------------------------------------------------------------
+-- | A reasonable default value for NumStyle.
 autoStyle :: NumStyle
 autoStyle = SmartStyle (-2) 7
 
 
 ------------------------------------------------------------------------------
+-- | Data structure for different methods of specifying precision.
 data Precision
     = SigFigs Int
       -- ^ Specifies precision as a fixed number of significant digits
@@ -77,28 +79,43 @@ data Precision
 -- | Different styles for representing negative numbers.
 data NegativeStyle
     = NegMinusSign
+      -- ^ Shows negative numbers as -123.000
     | NegParens
+      -- ^ Shows negative numbers as (123.000)
   deriving (Eq,Show)
-
-
-------------------------------------------------------------------------------
-data NumFormat = NumFormat
-    { _nfUnits    :: Double
-    , _nfPrefix   :: Maybe Text
-    , _nfSuffix   :: Maybe Text
-    , _nfThouSep  :: Maybe Char
-    , _nfDecSep   :: Char
-    , _nfStyle    :: NumStyle
-    , _nfPrec     :: Maybe Precision
-    , _nfNegStyle :: NegativeStyle
-    } deriving (Eq,Show,Typeable)
-makeLenses ''NumFormat
 
 
 ------------------------------------------------------------------------------
 instance Default NumFormat where
     def = NumFormat 1 Nothing Nothing Nothing '.' autoStyle
                     (Just $ Decimals 3) NegMinusSign
+
+
+------------------------------------------------------------------------------
+-- The main data structure with all the necessary information for formatting
+-- numbers.
+data NumFormat = NumFormat
+    { _nfUnits    :: Double
+      -- ^ Units of measure to use in formatting the number.  This is useful
+      -- for things like percentages where you would use (units of 0.01) or
+      -- financial statements (units of 1000 for example).
+    , _nfPrefix   :: Maybe Text
+      -- ^ A prefix to add to the number, commonly used for currency
+      -- designation.
+    , _nfSuffix   :: Maybe Text
+      -- ^ A suffix for the number.  Percent, for example.
+    , _nfThouSep  :: Maybe Char
+      -- ^ The character to use as thousands separator if applicable.
+    , _nfDecSep   :: Char
+      -- ^ Character to use for the decimal separator.
+    , _nfStyle    :: NumStyle
+      -- ^ The formatting style
+    , _nfPrec     :: Maybe Precision
+      -- ^ Amount of precision to display
+    , _nfNegStyle :: NegativeStyle
+      -- ^ Styles for negative numbers
+    } deriving (Eq,Show,Typeable)
+makeLenses ''NumFormat
 
 
 ------------------------------------------------------------------------------
@@ -135,18 +152,21 @@ rawIntFmt = def & nfPrec .~ Just (Decimals 0)
 
 
 -------------------------------------------------------------------------------
+-- | Int format with comma as the thousands separator.
 intFmt :: NumFormat
 intFmt = def & nfPrec .~ Just (Decimals 0)
              & nfThouSep .~ Just ','
 
 
 ------------------------------------------------------------------------------
+-- | Common format for percentages.  Example: 75.000%
 percentFmt :: NumFormat
 percentFmt = def & nfSuffix .~ Just "%"
                  & nfUnits .~ 0.01
 
 
 ------------------------------------------------------------------------------
+-- | Common format for US dollar quantities of the form $123,456.99.
 usdFmt :: NumFormat
 usdFmt = def & nfPrefix .~ Just "$"
              & nfThouSep .~ Just ','
@@ -154,17 +174,10 @@ usdFmt = def & nfPrefix .~ Just "$"
 
 
 -------------------------------------------------------------------------------
-formatPct :: (Num a, Real a, Fractional a) => Int -> a -> Text
+-- | Convenience wrapper for percentages that lets you easily control the
+-- number of decimal places.
+formatPct :: Real a => Int -> a -> Text
 formatPct p = formatNum (percentFmt & nfPrec .~ Just (Decimals p))
-
-
--------------------------------------------------------------------------------
-formatCur :: (Num a, Real a, Fractional a) => Text -> Int -> a -> Text
-formatCur cur p = formatNum f
-  where
-    f = def & nfPrefix .~ Just cur
-            & nfPrec .~ Just (Decimals p)
-            & nfThouSep .~ Just ','
 
 
 -------------------------------------------------------------------------------
