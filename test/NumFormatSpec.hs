@@ -7,7 +7,7 @@ module NumFormatSpec where
 
 ------------------------------------------------------------------------------
 import           Control.Lens
-import           Data.Default
+import           Data.Default.Class
 import           Formattable.NumFormat
 import           Test.Hspec
 ------------------------------------------------------------------------------
@@ -17,6 +17,8 @@ import           Test.Hspec
 spec :: Spec
 spec = do
     describe "formatNum" $ do
+        it "doesn't show exponent for zero" $ do
+          formatNum def 0 `shouldBe` "0.000"
         it "works for the simple case" $ do
           formatNum def 123 `shouldBe` "123.000"
         it "works for the small end of the simple case" $ do

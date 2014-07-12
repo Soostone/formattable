@@ -264,6 +264,6 @@ addDecimal :: Char -> RawNum -> Text
 addDecimal c (RawNum n d e) = T.concat [n, d', e']
   where
     d' = if T.null d then "" else T.cons c d
-    e' = if T.null e then "" else T.cons 'e' e
+    e' = if T.null e || n == "0" then "" else T.cons 'e' e
 
 
