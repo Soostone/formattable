@@ -1,0 +1,5 @@
+dist
+.hpc
+*.swp
+*.hi
+*.o
