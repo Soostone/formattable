@@ -136,7 +136,9 @@ makeLenses ''NumFormat
 -- transformations that happen after we have split the number at the decimal
 -- place.
 data RawNum = RawNum
-    { rawNumN :: Text
+    { rawNumX :: Double
+      -- ^ The original number so we can check for zero
+    , rawNumN :: Text
       -- ^ Integral part (left of the decimal place)
     , rawNumD :: Text
       -- ^ Decimal part (right of the decimal place)
@@ -151,8 +153,8 @@ data RawNum = RawNum
 --
 -- We need to split on dot because that's what double-conversion uses as the
 -- decimal separator.
-mkRawNum :: Text -> RawNum
-mkRawNum t = RawNum n d (T.drop 1 e)
+mkRawNum :: Real a => a -> Text -> RawNum
+mkRawNum x t = RawNum (realToFrac x) n d (T.drop 1 e)
   where
     (n,rest) = T.span (/= '.') t
     (d,e) = T.span (/= 'e') (T.drop 1 rest)
@@ -201,7 +203,7 @@ formatNum :: Real a => NumFormat -> a -> Text
 formatNum NumFormat{..} noUnits =
     whenNegative noUnits (addSign _nfNegStyle) $ addPrefix $ addSuffix $
     addDecimal _nfDecSep $ maybe id (addThousands . T.singleton) _nfThouSep $
-    maybe id limitPrecision _nfPrec $ mkRawNum formatted
+    maybe id limitPrecision _nfPrec $ mkRawNum noUnits formatted
   where
     a = abs $ realToFrac noUnits / _nfUnits
     formatted = case _nfStyle of
@@ -232,13 +234,13 @@ smartStyle l h precArg x =
 
 ------------------------------------------------------------------------------
 limitPrecision :: Precision -> RawNum -> RawNum
-limitPrecision p r@(RawNum n d e) =
+limitPrecision p r@(RawNum x n d e) =
     case p of
       SigFigs c ->
         if c < T.length n
-          then RawNum (T.take c n <> T.replicate (T.length n - c) "0") "" e
-          else RawNum n (T.take (c - T.length n) d) e
-      Decimals c -> if c == (-1) then r else RawNum n (T.take c d) e
+          then RawNum x (T.take c n <> T.replicate (T.length n - c) "0") "" e
+          else RawNum x n (T.take (c - T.length n) d) e
+      Decimals c -> if c == (-1) then r else RawNum x n (T.take c d) e
 
 
 ------------------------------------------------------------------------------
@@ -254,16 +256,16 @@ addSign NegParens t = T.concat ["(", t, ")"]
 
 -------------------------------------------------------------------------------
 addThousands :: Text -> RawNum -> RawNum
-addThousands sep (RawNum n d e) = RawNum n' d e
+addThousands sep (RawNum x n d e) = RawNum x n' d e
   where
     n' = T.reverse . T.intercalate sep . T.chunksOf 3 . T.reverse $ n
 
 
 ------------------------------------------------------------------------------
 addDecimal :: Char -> RawNum -> Text
-addDecimal c (RawNum n d e) = T.concat [n, d', e']
+addDecimal c (RawNum x n d e) = T.concat [n, d', e']
   where
     d' = if T.null d then "" else T.cons c d
-    e' = if T.null e || n == "0" then "" else T.cons 'e' e
+    e' = if T.null e || x == 0 then "" else T.cons 'e' e
 
 
