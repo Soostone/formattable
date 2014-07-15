@@ -37,6 +37,7 @@ module Formattable.NumFormat
     , rawIntFmt
     , intFmt
     , percentFmt
+    , numFmt
     , usdFmt
 
     -- * Formatting functions
@@ -178,6 +179,13 @@ intFmt = def & nfPrec .~ Just (Decimals 0)
 percentFmt :: NumFormat
 percentFmt = def & nfSuffix .~ Just "%"
                  & nfUnits .~ 0.01
+
+
+------------------------------------------------------------------------------
+-- | Common format for generic numeric quantities of the form 123,456.99.
+numFmt :: NumFormat
+numFmt = def & nfThouSep .~ Just ','
+             & nfPrec .~ Just (Decimals 2)
 
 
 ------------------------------------------------------------------------------
