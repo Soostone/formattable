@@ -194,6 +194,7 @@ usdFmt :: NumFormat
 usdFmt = def & nfPrefix .~ Just "$"
              & nfThouSep .~ Just ','
              & nfPrec .~ Just (Decimals 2)
+             & nfStyle .~ Fixed
 
 
 -------------------------------------------------------------------------------
