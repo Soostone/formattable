@@ -19,6 +19,8 @@ spec = do
     describe "formatNum" $ do
         it "doesn't show exponent for zero" $ do
           formatNum def 0 `shouldBe` "0.000"
+        it "doesn't show exponent for zero intFmt" $ do
+          formatNum intFmt 0 `shouldBe` "0"
         it "works for the simple case" $ do
           formatNum def 123 `shouldBe` "123.000"
         it "works for the small end of the simple case" $ do
@@ -26,7 +28,9 @@ spec = do
         it "switches to exponent notation for small numbers" $ do
           formatNum def 0.0023 `shouldBe` "2.300e-3"
         it "switches to exponent notation for large numbers" $ do
-          formatNum def 12345678 `shouldBe` "1.235e7"
+          formatNum def 12345678000 `shouldBe` "1.235e10"
+        it "switches to exponent notation for large negative numbers" $ do
+          formatNum def (-12345678000) `shouldBe` "-1.235e10"
         it "uses minimum number of decimal places if not specified" $ do
           formatNum (def & nfStyle .~ Fixed
                          & nfPrec .~ Nothing) 123 `shouldBe` "123"

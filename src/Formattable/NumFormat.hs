@@ -75,7 +75,7 @@ data NumStyle
 ------------------------------------------------------------------------------
 -- | A reasonable default value for NumStyle.
 autoStyle :: NumStyle
-autoStyle = SmartStyle (-2) 7
+autoStyle = SmartStyle (-2) 10
 
 
 ------------------------------------------------------------------------------
@@ -136,16 +136,16 @@ makeLenses ''NumFormat
 -- | A type wrapper to make it easier to handle the pipeline of
 -- transformations that happen after we have split the number at the decimal
 -- place.
-data RawNum = RawNum
-    { rawNumX :: Double
-      -- ^ The original number so we can check for zero
-    , rawNumN :: Text
-      -- ^ Integral part (left of the decimal place)
-    , rawNumD :: Text
-      -- ^ Decimal part (right of the decimal place)
-    , rawNumE :: Text
-      -- ^ Exponent part if there is one
-    }
+data RawNum a = RawNum a Text Text Text
+--    { rawNumX :: a
+--      -- ^ The original number so we can check for zero
+--    , rawNumN :: Text
+--      -- ^ Integral part (left of the decimal place)
+--    , rawNumD :: Text
+--      -- ^ Decimal part (right of the decimal place)
+--    , rawNumE :: Text
+--      -- ^ Exponent part if there is one
+--    }
 
 
 ------------------------------------------------------------------------------
@@ -154,11 +154,19 @@ data RawNum = RawNum
 --
 -- We need to split on dot because that's what double-conversion uses as the
 -- decimal separator.
-mkRawNum :: Real a => a -> Text -> RawNum
-mkRawNum x t = RawNum (realToFrac x) n d (T.drop 1 e)
+mkRawNum :: Real a => a -> Text -> RawNum a
+mkRawNum x t =
+    case (T.findIndex (== '.') t, T.findIndex (== 'e') t) of
+      (Nothing, Nothing) -> mk t "" ""
+      (Just i, Nothing) -> let (n,d) = T.splitAt i t
+                            in mk n (T.drop 1 d) ""
+      (Nothing, Just i) -> let (n,e) = T.splitAt i t
+                            in mk n "" (T.drop 1 e)
+      (Just i, Just j) -> let (n,rest) = T.splitAt i t
+                              (d,e) = T.splitAt (j-i-1) (T.drop 1 rest)
+                           in mk n d (T.drop 1 e)
   where
-    (n,rest) = T.span (/= '.') t
-    (d,e) = T.span (/= 'e') (T.drop 1 rest)
+    mk = RawNum x
 
 
 -------------------------------------------------------------------------------
@@ -232,7 +240,7 @@ formatNum NumFormat{..} noUnits =
 -- exponential format
 smartStyle :: Int -> Int -> Int -> Double -> Text
 smartStyle l h precArg x =
-    if lo < x' && x < hi
+    if lo < x' && x' < hi
       then toFixed precArg x
       else toExponential precArg x
   where
@@ -242,7 +250,7 @@ smartStyle l h precArg x =
 
 
 ------------------------------------------------------------------------------
-limitPrecision :: Precision -> RawNum -> RawNum
+limitPrecision :: Precision -> RawNum a -> RawNum a
 limitPrecision p r@(RawNum x n d e) =
     case p of
       SigFigs c ->
@@ -264,14 +272,14 @@ addSign NegParens t = T.concat ["(", t, ")"]
 
 
 -------------------------------------------------------------------------------
-addThousands :: Text -> RawNum -> RawNum
+addThousands :: Text -> RawNum a -> RawNum a
 addThousands sep (RawNum x n d e) = RawNum x n' d e
   where
     n' = T.reverse . T.intercalate sep . T.chunksOf 3 . T.reverse $ n
 
 
 ------------------------------------------------------------------------------
-addDecimal :: Char -> RawNum -> Text
+addDecimal :: (Eq a, Num a) => Char -> RawNum a -> Text
 addDecimal c (RawNum x n d e) = T.concat [n, d', e']
   where
     d' = if T.null d then "" else T.cons c d
