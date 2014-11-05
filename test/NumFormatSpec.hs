@@ -43,22 +43,22 @@ spec = do
                          & nfPrec .~ Nothing) 123 `shouldBe` "1.23e2"
         it "exponent style respects explicit number of decimal places" $ do
           formatNum (def & nfStyle .~ Exponent
-                         & nfPrec .~ Just (Decimals 1)) 123 `shouldBe` "1.2e2"
+                         & nfPrec .~ Just (1, Decimals)) 123 `shouldBe` "1.2e2"
 
         it "works for negative numbers" $ do
           formatNum def (-123) `shouldBe` "-123.000"
         it "prefix, suffix, and NegParens style work properly" $ do
           formatNum (def & nfNegStyle .~ NegParens
-                         & nfPrefix .~ Just "$"
-                         & nfSuffix .~ Just "c") (-123) `shouldBe`
+                         & nfPrefix .~ "$"
+                         & nfSuffix .~ "c") (-123) `shouldBe`
             "($123.000c)"
         it "units work for percent style" $ do
           formatNum percentFmt 0.79 `shouldBe` "79.000%"
         it "separators work properly" $ do
-          formatNum (def & nfThouSep .~ Just '.'
-                         & nfDecSep .~ ','
-                         & nfPrec .~ Just (Decimals 1)
-                         & nfPrefix .~ Just "$") 1234567 `shouldBe`
+          formatNum (def & nfThouSep .~ "."
+                         & nfDecSep .~ ","
+                         & nfPrec .~ Just (1, Decimals)
+                         & nfPrefix .~ "$") 1234567 `shouldBe`
             "$1.234.567,0"
         it "usdFmt is correct" $ do
           formatNum usdFmt 1234567.821 `shouldBe` "$1,234,567.82"
