@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP               #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
@@ -26,9 +27,13 @@ module Formattable
 import           Data.Int
 import           Data.Text             (Text)
 import qualified Data.Text             as T
-import           Data.Time
 import           Data.Word
-import           System.Locale
+#if MIN_VERSION_time(1,5,0)
+import           Data.Time.Format (TimeLocale, defaultTimeLocale)
+#else
+import           Data.Time
+import           System.Locale (TimeLocale, defaultTimeLocale)
+#endif
 -------------------------------------------------------------------------------
 import           Formattable.NumFormat
 -------------------------------------------------------------------------------
