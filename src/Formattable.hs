@@ -29,7 +29,7 @@ import           Data.Text             (Text)
 import qualified Data.Text             as T
 import           Data.Word
 #if MIN_VERSION_time(1,5,0)
-import           Data.Time.Format (TimeLocale, defaultTimeLocale)
+import           Data.Time
 #else
 import           Data.Time
 import           System.Locale (TimeLocale, defaultTimeLocale)
