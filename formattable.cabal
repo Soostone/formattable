@@ -11,6 +11,8 @@ License:             BSD3
 License-file:        LICENSE
 Author:              Ozgun Ataman, Doug Beardsley
 Maintainer:          oz@soostone.com
+Homepage:            https://github.com/Soostone/formattable
+Bug-reports:         https://github.com/Soostone/formattable/issues
 Category:            Text
 Build-type:          Simple
 Cabal-version:       >= 1.10
@@ -58,3 +60,6 @@ Test-Suite testsuite
     , text
     , time
 
+source-repository head
+  type:     git
+  location: https://github.com/Soostone/formattable.git
