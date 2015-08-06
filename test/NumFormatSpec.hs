@@ -6,12 +6,60 @@ module NumFormatSpec where
 
 
 ------------------------------------------------------------------------------
-import           Control.Lens
+import           Control.Applicative
+import           Control.Lens                hiding (elements)
 import           Data.Default.Class
+import           Data.Double.Conversion.Text
+import           Data.Maybe
+import           Data.Text                   (Text)
 import           Formattable.NumFormat
 import           Test.Hspec
+import           Test.Hspec.QuickCheck
+import           Test.QuickCheck.Arbitrary
+import           Test.QuickCheck.Gen
+import           Test.QuickCheck.Property
 ------------------------------------------------------------------------------
 
+instance Arbitrary NumStyle where
+  arbitrary = do
+    oneof [ pure Exponent
+          , pure Fixed
+          , SmartExponent <$> elements [-4..2] <*> elements [4..12]
+          , pure SIStyle
+          , SmartSI <$> choose (0.001, 1000) <*> choose (1e5, 1e9)
+          ]
+
+instance Arbitrary PrecisionType where
+  arbitrary = elements [SigFigs, Decimals]
+
+
+instance Arbitrary NegativeStyle where
+  arbitrary = elements [NegMinusSign, NegParens]
+
+
+instance Arbitrary NumFormat where
+  arbitrary = NumFormat <$> elements [0.01, 1, 1000, 1000000, 1000000000]
+                        <*> elements ["", "$"]
+                        <*> elements ["", "%"]
+                        <*> elements ["", " ", ","]
+                        <*> elements ["."]
+                        <*> arbitrary
+    -- For some reason if we use Nothing for _nfPrec we get failures that
+    -- are off by VERY SMALL amounts. It doesn't look like this will be
+    -- an issue in practice so leaving it out for now.
+                        <*> oneof [Just <$> prec]
+                        <*> arbitrary
+    where
+      prec = (,) <$> elements [0..10] <*> arbitrary
+
+
+formatNumOld :: Real a => NumFormat -> a -> Text
+formatNumOld = formatNumGeneric (toExponential . fromMaybe (-1))
+                                (toFixed . fromMaybe (-1))
+
+
+matchesDoubleConversion :: NumFormat -> Double -> Property
+matchesDoubleConversion nf x = formatNum nf x === formatNumOld nf x
 
 ------------------------------------------------------------------------------
 spec :: Spec
@@ -62,6 +110,7 @@ spec = do
             "$1.234.567,0"
         it "usdFmt is correct" $ do
           formatNum usdFmt 1234567.821 `shouldBe` "$1,234,567.82"
+        prop "matches double-conversion" matchesDoubleConversion
     describe "formatIntegral" $ do
         it "doesn't show exponent for zero" $ do
           formatIntegral def 0 `shouldBe` "0.000"

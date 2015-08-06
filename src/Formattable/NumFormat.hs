@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE RankNTypes         #-}
 {-# LANGUAGE RecordWildCards    #-}
 {-# LANGUAGE TemplateHaskell    #-}
 {-# LANGUAGE TypeFamilies       #-}
@@ -44,19 +45,27 @@ module Formattable.NumFormat
     , formatPct
     , formatNum
     , formatIntegral
+    , formatNumGeneric
     ) where
 
 
 -------------------------------------------------------------------------------
-import           Control.Lens
+import           Control.Applicative
 import           Data.Char
 import           Data.Default.Class
-import           Data.Double.Conversion.Text
+import           Data.Maybe
 import           Data.Monoid
 import           Data.Text                   (Text)
 import qualified Data.Text                   as T
 import           Data.Typeable
+import           Numeric
 -------------------------------------------------------------------------------
+
+
+type Lens s t a b = forall f. Functor f => (a -> f b) -> s -> f t
+lens :: (s -> a) -> (s -> b -> t) -> Lens s t a b
+lens sa sbt afb s = sbt s <$> afb (sa s)
+
 
 
 -------------------------------------------------------------------------------
@@ -133,7 +142,46 @@ data NumFormat = NumFormat
     , _nfNegStyle :: NegativeStyle
       -- ^ Styles for negative numbers
     } deriving (Eq,Show,Typeable)
-makeLenses ''NumFormat
+
+nfUnits :: Lens NumFormat NumFormat Double Double
+nfUnits = lens _nfUnits setter
+  where
+    setter sc v = sc { _nfUnits = v }
+
+nfPrefix :: Lens NumFormat NumFormat Text Text
+nfPrefix = lens _nfPrefix setter
+  where
+    setter sc v = sc { _nfPrefix = v }
+
+nfSuffix :: Lens NumFormat NumFormat Text Text
+nfSuffix = lens _nfSuffix setter
+  where
+    setter sc v = sc { _nfSuffix = v }
+
+nfThouSep :: Lens NumFormat NumFormat Text Text
+nfThouSep = lens _nfThouSep setter
+  where
+    setter sc v = sc { _nfThouSep = v }
+
+nfDecSep :: Lens NumFormat NumFormat Text Text
+nfDecSep = lens _nfDecSep setter
+  where
+    setter sc v = sc { _nfDecSep = v }
+
+nfStyle :: Lens NumFormat NumFormat NumStyle NumStyle
+nfStyle = lens _nfStyle setter
+  where
+    setter sc v = sc { _nfStyle = v }
+
+nfPrec :: Lens NumFormat NumFormat (Maybe (Int, PrecisionType)) (Maybe (Int, PrecisionType))
+nfPrec = lens _nfPrec setter
+  where
+    setter sc v = sc { _nfPrec = v }
+
+nfNegStyle :: Lens NumFormat NumFormat NegativeStyle NegativeStyle
+nfNegStyle = lens _nfNegStyle setter
+  where
+    setter sc v = sc { _nfNegStyle = v }
 
 
 ------------------------------------------------------------------------------
@@ -183,50 +231,56 @@ mkRawNum x t =
 -------------------------------------------------------------------------------
 -- | Int format with no thousands separator.
 rawIntFmt :: NumFormat
-rawIntFmt = def & nfPrec .~ Just (0, Decimals)
+rawIntFmt = def { _nfPrec = Just (0, Decimals) }
 
 
 -------------------------------------------------------------------------------
 -- | Int format with comma as the thousands separator.
 intFmt :: NumFormat
-intFmt = def & nfPrec .~ Just (0, Decimals)
-             & nfThouSep .~ ","
+intFmt = def { _nfPrec = Just (0, Decimals)
+             , _nfThouSep = ","
+             }
 
 
 ------------------------------------------------------------------------------
 -- | Common format for percentages.  Example: 75.000%
 percentFmt :: NumFormat
-percentFmt = def & nfSuffix .~ "%"
-                 & nfUnits .~ 0.01
+percentFmt = def { _nfSuffix = "%"
+                 , _nfUnits = 0.01
+                 }
 
 
 ------------------------------------------------------------------------------
 -- | Common format for generic numeric quantities of the form 123,456.99.
 numFmt :: NumFormat
-numFmt = def & nfThouSep .~ ","
-             & nfPrec .~ Just (2, Decimals)
+numFmt = def { _nfThouSep = ","
+             , _nfPrec = Just (2, Decimals)
+             }
 
 
 ------------------------------------------------------------------------------
 -- | Common format for US dollar quantities of the form $123,456.99.
 usdFmt :: NumFormat
-usdFmt = def & nfPrefix .~ "$"
-             & nfThouSep .~ ","
-             & nfPrec .~ Just (2, Decimals)
-             & nfStyle .~ Fixed
+usdFmt = def { _nfPrefix = "$"
+             , _nfThouSep = ","
+             , _nfPrec = Just (2, Decimals)
+             , _nfStyle = Fixed
+             }
 
 
 -------------------------------------------------------------------------------
 -- | Convenience wrapper for percentages that lets you easily control the
 -- number of decimal places.
 formatPct :: Real a => Int -> a -> Text
-formatPct p = formatNum (percentFmt & nfPrec .~ Just (p, Decimals))
+formatPct p = formatNum (percentFmt { _nfPrec = Just (p, Decimals) })
 
 
 -------------------------------------------------------------------------------
--- | This function checks to see if the number is smaller than the number of
--- digits of precision being displayed and if so, switches to scientific
--- notation.
+-- | Primary function for formatting integrals.  This was originally created to
+-- avoid depending on the double-conversion package which uses a C library and
+-- is therefore less portable.  We're keeping this as a separate function
+-- because it should have the potential to be more efficient than the floating
+-- point version.
 formatIntegral :: Integral a => NumFormat -> a -> Text
 formatIntegral NumFormat{..} noUnits =
     whenNegative noUnits (addSign _nfNegStyle) $
@@ -291,36 +345,62 @@ exponentialInt numDecimals n =
 
 
 -------------------------------------------------------------------------------
--- | This function checks to see if the number is smaller than the number of
--- digits of precision being displayed and if so, switches to scientific
--- notation.
+-- | Primary function for formatting floating point numbers.
 formatNum :: Real a => NumFormat -> a -> Text
-formatNum NumFormat{..} noUnits =
+formatNum = formatNumGeneric (\p x -> T.pack $ showEFloat p x "")
+                             (\p x -> T.pack $ showFFloat p x "")
+
+
+-------------------------------------------------------------------------------
+-- | Generic floating point formatting function that allows you to specify your
+-- own underlying functions for formatting exponential and fixed formats.  This
+-- can allow you to use more efficient versions if available.  We also use it
+-- the test suite to check behavior against the old double-conversion
+-- implementation.
+formatNumGeneric
+    :: Real a
+    => (Maybe Int -> Double -> Text)
+    -- ^ Exponential formatter
+    -> (Maybe Int -> Double -> Text)
+    -- ^ Fixed formatter
+    -> NumFormat
+    -- ^ Format specification
+    -> a
+    -- ^ The number to format
+    -> Text
+formatNumGeneric fmtExp fmtFixed NumFormat{..} noUnits =
     whenNegative noUnits (addSign _nfNegStyle) $
     addPrefix $
     addSuffix $
     addDecimal _nfDecSep $
     addThousands _nfThouSep $
     maybe id limitPrecision _nfPrec $
+    stripZeros precArg $
     mkRawNum noUnits $
     formatted siUnitized
-
   where
     a = abs $ realToFrac noUnits / _nfUnits
     formatted = case _nfStyle of
-                  Exponent -> toExponential precArg
-                  Fixed -> toFixed precArg
-                  SmartExponent lo hi -> smartStyle lo hi (toFixed precArg) (toExponential precArg)
-                  SIStyle -> toFixed precArg
-                  SmartSI _ _ -> toFixed precArg
+                  Exponent -> fmtExp precArg
+                  Fixed -> fmtFixed precArg
+                  SmartExponent lo hi -> smartStyle lo hi (fmtFixed precArg) (fmtExp precArg)
+                  SIStyle -> fmtFixed precArg
+                  SmartSI _ _ -> fmtFixed precArg
     addPrefix x = _nfPrefix <> x
     addSuffix x1 = let x2 = x1 <> siSuffix in x2 <> _nfSuffix
-    precArg = maybe (-1) fst _nfPrec
+    precArg = fst <$> _nfPrec
     (e, siSuffix) = case _nfStyle of
                       SIStyle -> siPrefix a
                       SmartSI lo hi -> if a > lo && a < hi then siPrefix a else (0, "")
                       _ -> (0, "")
     siUnitized = a / 10**(fromIntegral e)
+
+
+stripZeros :: Maybe Int -> RawNum a -> RawNum a
+stripZeros precArg rn@(RawNum x a b c) =
+  if isNothing precArg && T.all (=='0') b
+    then RawNum x a "" c
+    else rn
 
 
 siPrefixIntegral :: Integral a => a -> (Int, Text)
