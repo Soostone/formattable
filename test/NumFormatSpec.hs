@@ -62,3 +62,41 @@ spec = do
             "$1.234.567,0"
         it "usdFmt is correct" $ do
           formatNum usdFmt 1234567.821 `shouldBe` "$1,234,567.82"
+    describe "formatIntegral" $ do
+        it "doesn't show exponent for zero" $ do
+          formatIntegral def 0 `shouldBe` "0.000"
+        it "doesn't show exponent for zero intFmt" $ do
+          formatIntegral intFmt 0 `shouldBe` "0"
+        it "works for the simple case" $ do
+          formatIntegral def 123 `shouldBe` "123.000"
+        it "switches to exponent notation for large numbers" $ do
+          formatIntegral def 12345678000 `shouldBe` "1.235e10"
+        it "switches to exponent notation for large negative numbers" $ do
+          formatIntegral def (-12345678000) `shouldBe` "-1.235e10"
+        it "uses minimum number of decimal places if not specified" $ do
+          formatIntegral (def & nfStyle .~ Fixed
+                         & nfPrec .~ Nothing) 123 `shouldBe` "123"
+        it "fixed style doesn't switch to exponents" $ do
+          formatIntegral (def & nfStyle .~ Fixed) 123456789 `shouldBe` "123456789.000"
+        it "works for exponent style" $ do
+          formatIntegral (def & nfStyle .~ Exponent) 123 `shouldBe` "1.230e2"
+        it "exponent style uses minimum number of decimal places" $ do
+          formatIntegral (def & nfStyle .~ Exponent
+                         & nfPrec .~ Nothing) 123 `shouldBe` "1.23e2"
+        it "exponent style respects explicit number of decimal places" $ do
+          formatIntegral (def & nfStyle .~ Exponent
+                         & nfPrec .~ Just (1, Decimals)) 123 `shouldBe` "1.2e2"
+
+        it "works for negative numbers" $ do
+          formatIntegral def (-123) `shouldBe` "-123.000"
+        it "prefix, suffix, and NegParens style work properly" $ do
+          formatIntegral (def & nfNegStyle .~ NegParens
+                         & nfPrefix .~ "$"
+                         & nfSuffix .~ "c") (-123) `shouldBe`
+            "($123.000c)"
+        it "separators work properly" $ do
+          formatIntegral (def & nfThouSep .~ "."
+                         & nfDecSep .~ ","
+                         & nfPrec .~ Just (1, Decimals)
+                         & nfPrefix .~ "$") 1234567 `shouldBe`
+            "$1.234.567,0"

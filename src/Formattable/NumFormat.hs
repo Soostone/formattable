@@ -48,6 +48,7 @@ module Formattable.NumFormat
 
 -------------------------------------------------------------------------------
 import           Control.Lens
+import           Data.Char
 import           Data.Default.Class
 import           Data.Double.Conversion.Text
 import           Data.Monoid
@@ -218,6 +219,31 @@ formatPct p = formatNum (percentFmt & nfPrec .~ Just (p, Decimals))
 -- | This function checks to see if the number is smaller than the number of
 -- digits of precision being displayed and if so, switches to scientific
 -- notation.
+formatIntegral :: Integral a => NumFormat -> a -> Text
+formatIntegral NumFormat{..} noUnits =
+    whenNegative noUnits (addSign _nfNegStyle) $
+    addPrefix $
+    addSuffix $
+    addDecimal _nfDecSep $
+    addThousands _nfThouSep $
+    maybe id limitPrecision _nfPrec $
+    RawNum noUnits (T.pack $ showIntegralBase 10 noUnits) "" ""
+  where
+    a = abs $ realToFrac noUnits / _nfUnits
+    addPrefix x = _nfPrefix <> x
+    addSuffix x1 = let x2 = x1 <> siSuffix in x2 <> _nfSuffix
+    precArg = maybe (-1) fst _nfPrec
+    (e, siSuffix) = case _nfStyle of
+                      SIStyle -> siPrefix a
+                      SmartSI lo hi -> if a > lo && a < hi then siPrefix a else (0, "")
+                      _ -> (0, "")
+    siUnitized = a / 10**(fromIntegral e)
+
+
+-------------------------------------------------------------------------------
+-- | This function checks to see if the number is smaller than the number of
+-- digits of precision being displayed and if so, switches to scientific
+-- notation.
 formatNum :: Real a => NumFormat -> a -> Text
 formatNum NumFormat{..} noUnits =
     whenNegative noUnits (addSign _nfNegStyle) $
@@ -320,3 +346,23 @@ addDecimal t (RawNum x n d e) = T.concat [n, d', e']
     e' = if T.null e || x == 0 then "" else T.cons 'e' e
 
 
+------------------------------------------------------------------------------
+-- An integral show function without the Show constraint.
+showIntegralBase :: Integral a => a -> a -> String
+showIntegralBase b n =
+    -- We unroll the go loop once because you can't negate minBound
+    let (q,r) = n `quotRem` b in go q (go (abs r) "")
+  where
+    go m str
+      | m < 0 = '-' : go (-m) str
+      | m < b = integralDigit m : str
+      | otherwise = let (q,r) = m `quotRem` b
+                     in go q (integralDigit r : str)
+
+
+------------------------------------------------------------------------------
+integralDigit :: Integral a => a -> Char
+integralDigit n
+  | n < 10 = chr $ ord '0' + fromIntegral n
+  | n < 36 = chr $ ord 'a' + fromIntegral n - 10
+  | otherwise = error "integralDigit: not a digit"
