@@ -43,6 +43,7 @@ module Formattable.NumFormat
     -- * Formatting functions
     , formatPct
     , formatNum
+    , formatIntegral
     ) where
 
 
@@ -71,7 +72,13 @@ data NumStyle
       -- style.  If the number is outside this interval, then use the Exponent
       -- style.
     | SIStyle
+      -- ^ Adds the symbol for the closest smaller SI prefix as the suffix to
+      -- the formatted number.  This suffix appears before any other suffix
+      -- you designate.
     | SmartSI Double Double
+      -- ^ Like SIStyle but only applies the SI prefix if the number to be
+      -- formatted falls within the range [a,b] given by the SmartSI
+      -- arguments.
   deriving (Eq,Show)
 
 
@@ -149,6 +156,7 @@ data RawNum a = RawNum a Text Text Text
 --    , rawNumE :: Text
 --      -- ^ Exponent part if there is one
 --    }
+  deriving (Eq,Show)
 
 
 ------------------------------------------------------------------------------
@@ -227,17 +235,59 @@ formatIntegral NumFormat{..} noUnits =
     addDecimal _nfDecSep $
     addThousands _nfThouSep $
     maybe id limitPrecision _nfPrec $
-    RawNum noUnits (T.pack $ showIntegralBase 10 noUnits) "" ""
+    formatted siUnitized
   where
-    a = abs $ realToFrac noUnits / _nfUnits
+    a = abs $ noUnits `div` round _nfUnits
+    formatted = case _nfStyle of
+                  Exponent -> exponentialInt precArg
+                  Fixed -> fixedInt precArg
+                  SmartExponent lo hi -> smartStyleIntegral lo hi
+                                           (fixedInt precArg)
+                                           (exponentialInt precArg)
+                  SIStyle -> fixedInt precArg
+                  SmartSI _ _ -> fixedInt precArg
     addPrefix x = _nfPrefix <> x
     addSuffix x1 = let x2 = x1 <> siSuffix in x2 <> _nfSuffix
     precArg = maybe (-1) fst _nfPrec
     (e, siSuffix) = case _nfStyle of
-                      SIStyle -> siPrefix a
-                      SmartSI lo hi -> if a > lo && a < hi then siPrefix a else (0, "")
+                      SIStyle -> siPrefixIntegral a
+                      SmartSI lo hi -> if fromIntegral a > lo && fromIntegral a < hi then siPrefixIntegral a else (0, "")
                       _ -> (0, "")
-    siUnitized = a / 10**(fromIntegral e)
+    siUnitized = a `div` 10^e
+
+
+-- The following two functions skip the double-conversion library and let us
+-- go straight to RawNum when we're working with Integrals.  This avoids a C
+-- dependency and hopefully should also be faster.
+
+
+fixedInt :: Integral a => Int -> a -> RawNum a
+fixedInt (-1) n =
+    RawNum n (T.pack $ showIntegralBase 10 n) "" ""
+fixedInt decimals n =
+    RawNum n (T.pack $ showIntegralBase 10 n) (T.replicate decimals "0") ""
+
+
+exponentialInt :: Integral a => Int -> a -> RawNum a
+exponentialInt (-1) n = RawNum n (T.pack a) (T.pack b) (T.pack $ show (len-1))
+  where
+    str = showIntegralBase 10 n
+    len = length str
+    (a,b) = splitAt 1 str
+exponentialInt numDecimals n =
+    RawNum n (T.pack a) (T.pack b) (T.pack $ show e)
+  where
+    str = showIntegralBase 10 n
+    len = length str
+    (keep,junk) = splitAt (numDecimals+1) (str ++ repeat '0')
+    rounded = if head junk >= '5'
+                then reverse $ roundStr $ reverse keep
+                else keep
+    e = if length rounded > length keep then len else len-1
+    (a,b) = splitAt 1 rounded
+
+    roundStr [] = "1"
+    roundStr (x:xs) = if x == '9' then '0' : roundStr xs else succ x : xs
 
 
 -------------------------------------------------------------------------------
@@ -260,7 +310,7 @@ formatNum NumFormat{..} noUnits =
     formatted = case _nfStyle of
                   Exponent -> toExponential precArg
                   Fixed -> toFixed precArg
-                  SmartExponent lo hi -> smartStyle lo hi precArg
+                  SmartExponent lo hi -> smartStyle lo hi (toFixed precArg) (toExponential precArg)
                   SIStyle -> toFixed precArg
                   SmartSI _ _ -> toFixed precArg
     addPrefix x = _nfPrefix <> x
@@ -271,6 +321,19 @@ formatNum NumFormat{..} noUnits =
                       SmartSI lo hi -> if a > lo && a < hi then siPrefix a else (0, "")
                       _ -> (0, "")
     siUnitized = a / 10**(fromIntegral e)
+
+
+siPrefixIntegral :: Integral a => a -> (Int, Text)
+siPrefixIntegral x
+  | abs x > 10^(24::Int) = (24, "Y")
+  | abs x > 10^(21::Int) = (21, "Z")
+  | abs x > 10^(18::Int) = (18, "E")
+  | abs x > 10^(15::Int) = (15, "P")
+  | abs x > 10^(12::Int) = (12, "T")
+  | abs x > 10^(9::Int) = (9, "G")
+  | abs x > 10^(6::Int) = (6, "M")
+  | abs x > 10^(3::Int) = (3, "k")
+  | otherwise = (0, "")
 
 
 siPrefix :: Double -> (Int, Text)
@@ -297,15 +360,51 @@ siPrefix x
 ------------------------------------------------------------------------------
 -- | A "pre-format" function that intelligently chooses between fixed and
 -- exponential format
-smartStyle :: Int -> Int -> Int -> Double -> Text
-smartStyle l h precArg x =
+smartStyleIntegral
+    :: (Num a, Ord a)
+    => Int
+    -- ^ Lower bound exponent
+    -> Int
+    -- ^ Upper bound exponent
+    -> (a -> b)
+    -- ^ Function to call if within range
+    -> (a -> b)
+    -- ^ Function to call if out of range
+    -> a
+    -> b
+smartStyleIntegral l h f g x =
     if lo < x' && x' < hi
-      then toFixed precArg x
-      else toExponential precArg x
+      then f x
+      else g x
   where
     x' = abs x
-    lo = 10.0 ** fromIntegral l
-    hi = 10.0 ** fromIntegral h
+    lo = 10 ^ (max l 0)
+    hi = 10 ^ (max h 0)
+
+
+------------------------------------------------------------------------------
+-- | A "pre-format" function that intelligently chooses between fixed and
+-- exponential format
+smartStyle
+    :: (Floating a, Ord a)
+    => Int
+    -- ^ Lower bound exponent
+    -> Int
+    -- ^ Upper bound exponent
+    -> (a -> b)
+    -- ^ Function to call if within range
+    -> (a -> b)
+    -- ^ Function to call if out of range
+    -> a
+    -> b
+smartStyle l h f g x =
+    if lo < x' && x' < hi
+      then f x
+      else g x
+  where
+    x' = abs x
+    lo = 10 ** fromIntegral l
+    hi = 10 ** fromIntegral h
 
 
 ------------------------------------------------------------------------------
@@ -347,10 +446,20 @@ addDecimal t (RawNum x n d e) = T.concat [n, d', e']
 
 
 ------------------------------------------------------------------------------
--- An integral show function without the Show constraint.
-showIntegralBase :: Integral a => a -> a -> String
-showIntegralBase b n =
+-- | An integral show function without the Show constraint.  It works for
+-- bases in the range [0,36].
+showIntegralBase
+    :: Integral a
+    => a
+    -- ^ The base
+    -> a
+    -- ^ The number to convert to string
+    -> String
+showIntegralBase b n
+    -- It's ok to negate b because we only support bases in the range [0,36]
+  | n < b && n > negate b = go n ""
     -- We unroll the go loop once because you can't negate minBound
+  | otherwise =
     let (q,r) = n `quotRem` b in go q (go (abs r) "")
   where
     go m str
@@ -366,3 +475,5 @@ integralDigit n
   | n < 10 = chr $ ord '0' + fromIntegral n
   | n < 36 = chr $ ord 'a' + fromIntegral n - 10
   | otherwise = error "integralDigit: not a digit"
+
+

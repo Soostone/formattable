@@ -2,7 +2,8 @@ Name:                formattable
 Version:             0.1
 Synopsis:            A business-quality formatting package
 Description:         This package defines data structures for describing
-                     business-quality formatting for numbers, dates, etc.
+                     business-quality formatting for numbers, dates, etc in a
+                     way that can be serialized and transported.
 License:             BSD3
 License-file:        LICENSE
 Author:              Ozgun Ataman, Doug Beardsley

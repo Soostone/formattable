@@ -40,6 +40,7 @@ import           Formattable.NumFormat
 
 
 ------------------------------------------------------------------------------
+-- | Provides a uniform interface for formatting all kinds of types.
 class Format a where
 
     -- | A format settings type specific to the object type.
