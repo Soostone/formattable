@@ -52,57 +52,57 @@ class Format a where
 
 instance Format Integer where
     type TheFormat Integer = NumFormat
-    runFormat set a = formatNum set a
+    runFormat set a = formatIntegral set a
 
 
 instance Format Int where
     type TheFormat Int = NumFormat
-    runFormat set a = formatNum set a
+    runFormat set a = formatIntegral set a
 
 
 instance Format Int8 where
     type TheFormat Int8 = NumFormat
-    runFormat set a = formatNum set a
+    runFormat set a = formatIntegral set a
 
 
 instance Format Int16 where
     type TheFormat Int16 = NumFormat
-    runFormat set a = formatNum set a
+    runFormat set a = formatIntegral set a
 
 
 instance Format Int32 where
     type TheFormat Int32 = NumFormat
-    runFormat set a = formatNum set a
+    runFormat set a = formatIntegral set a
 
 
 instance Format Int64 where
     type TheFormat Int64 = NumFormat
-    runFormat set a = formatNum set a
+    runFormat set a = formatIntegral set a
 
 
 instance Format Word where
     type TheFormat Word = NumFormat
-    runFormat set a = formatNum set a
+    runFormat set a = formatIntegral set a
 
 
 instance Format Word8 where
     type TheFormat Word8 = NumFormat
-    runFormat set a = formatNum set a
+    runFormat set a = formatIntegral set a
 
 
 instance Format Word16 where
     type TheFormat Word16 = NumFormat
-    runFormat set a = formatNum set a
+    runFormat set a = formatIntegral set a
 
 
 instance Format Word32 where
     type TheFormat Word32 = NumFormat
-    runFormat set a = formatNum set a
+    runFormat set a = formatIntegral set a
 
 
 instance Format Word64 where
     type TheFormat Word64 = NumFormat
-    runFormat set a = formatNum set a
+    runFormat set a = formatIntegral set a
 
 
 instance Format Double where
