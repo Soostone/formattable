@@ -18,11 +18,23 @@
 ----------------------------------------------------------------------------
 
 module Formattable.NumFormat
-    ( NumFormat(..)
+    (
+    -- * Main number formatting functions and data types
+      formatNum
+    , formatIntegral
+    , formatPct
+    , NumFormat(..)
     , NumStyle(..)
     , autoStyle
     , PrecisionType(..)
     , NegativeStyle(..)
+
+    -- * Common formats
+    , rawIntFmt
+    , intFmt
+    , percentFmt
+    , numFmt
+    , usdFmt
 
     -- * Lenses
     , nfUnits
@@ -34,17 +46,7 @@ module Formattable.NumFormat
     , nfPrec
     , nfNegStyle
 
-    -- * Common formats
-    , rawIntFmt
-    , intFmt
-    , percentFmt
-    , numFmt
-    , usdFmt
-
-    -- * Formatting functions
-    , formatPct
-    , formatNum
-    , formatIntegral
+    -- * Other formatting functions
     , formatNumGeneric
     ) where
 
@@ -119,7 +121,7 @@ data NegativeStyle
 
 
 ------------------------------------------------------------------------------
--- The main data structure with all the necessary information for formatting
+-- | The main data structure with all the necessary information for formatting
 -- numbers.
 data NumFormat = NumFormat
     { _nfUnits    :: Double
