@@ -1,4 +1,6 @@
+{-# LANGUAGE CPP               #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 ------------------------------------------------------------------------------
 -- |
 -- Module      :  Formattable.NumFormat
@@ -18,7 +20,9 @@ import           Data.Monoid
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Time
+#if !MIN_VERSION_time(1,5,0)
 import           System.Locale
+#endif
 ------------------------------------------------------------------------------
 
 
