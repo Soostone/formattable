@@ -75,5 +75,4 @@ englishDiff d =
                 , (anHour, "hour")
                 , (aMinute, "minute")
                 , (aSecond, "second")
-                , (aMillisecond, "millisecond")
                 ]
