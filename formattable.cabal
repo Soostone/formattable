@@ -1,5 +1,5 @@
 Name:                formattable
-Version:             0.1
+Version:             0.1.1
 Synopsis:            Business-quality formatting of numbers, dates, and other things
 Description:         This package defines data structures for describing
                      business-quality formatting for numbers, dates, etc in a
