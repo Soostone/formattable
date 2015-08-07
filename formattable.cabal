@@ -22,6 +22,7 @@ Library
   Exposed-modules:     
     Formattable
     Formattable.NumFormat
+    Formattable.TimeDiff
 
   hs-source-dirs: src
   Build-depends:
