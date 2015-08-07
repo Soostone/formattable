@@ -13,6 +13,13 @@ This package provides excellent support for formatting numbers including the fol
 * specify precision as number of decimal places or sig figs
 * different styles of negative numbers
 
+## Examples
+
+* runFormat (intFmt { _nfStyle = SIStyle }) (225142.3 :: Double) == "225k"
+
+See the [test suite](https://github.com/Soostone/formattable/blob/master/test/NumFormatSpec.hs#L67) for more examples.
+
+
 ## TODO
 
 * Get floating point number formatting working with GHCJS.
