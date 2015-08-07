@@ -32,7 +32,7 @@ import           Data.Word
 import           Data.Time
 #else
 import           Data.Time
-import           System.Locale (TimeLocale, defaultTimeLocale)
+import           System.Locale (defaultTimeLocale)
 #endif
 -------------------------------------------------------------------------------
 import           Formattable.NumFormat
