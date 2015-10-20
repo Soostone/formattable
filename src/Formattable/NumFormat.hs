@@ -57,8 +57,8 @@ import           Data.Char
 import           Data.Default.Class
 import           Data.Maybe
 import           Data.Monoid
-import           Data.Text                   (Text)
-import qualified Data.Text                   as T
+import           Data.Text           (Text)
+import qualified Data.Text           as T
 import           Data.Typeable
 import           Numeric
 -------------------------------------------------------------------------------
@@ -95,8 +95,10 @@ data NumStyle
 
 ------------------------------------------------------------------------------
 -- | A reasonable default value for NumStyle.
+--
+-- @SmartExponent (-6) 10@
 autoStyle :: NumStyle
-autoStyle = SmartExponent (-2) 10
+autoStyle = SmartExponent (-6) 10
 
 
 ------------------------------------------------------------------------------
