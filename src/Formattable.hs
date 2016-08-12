@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP               #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
@@ -25,15 +24,12 @@ module Formattable
 
 -------------------------------------------------------------------------------
 import           Data.Int
-import           Data.Text             (Text)
-import qualified Data.Text             as T
+import           Data.Text               (Text)
+import qualified Data.Text               as T
+import           Data.Time
+import qualified Data.Time.Locale.Compat as LC
 import           Data.Word
-#if MIN_VERSION_time(1,5,0)
 import           Data.Time
-#else
-import           Data.Time
-import           System.Locale (defaultTimeLocale)
-#endif
 -------------------------------------------------------------------------------
 import           Formattable.NumFormat
 -------------------------------------------------------------------------------
@@ -145,14 +141,14 @@ instance Format Float where
 -- | TheFormat = String
 instance Format Day where
     type TheFormat Day = String
-    runFormat set a = T.pack $ formatTime defaultTimeLocale set a
+    runFormat set a = T.pack $ formatTime LC.defaultTimeLocale set a
 
 
 ------------------------------------------------------------------------------
 -- | TheFormat = String
 instance Format UTCTime where
     type TheFormat UTCTime = String
-    runFormat set a = T.pack $ formatTime defaultTimeLocale set a
+    runFormat set a = T.pack $ formatTime LC.defaultTimeLocale set a
 
 
 ------------------------------------------------------------------------------
