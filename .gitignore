@@ -3,3 +3,5 @@ dist
 *.swp
 *.hi
 *.o
+.stack-work
+*.tix
