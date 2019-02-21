@@ -42,6 +42,9 @@ instance Arbitrary NumFormat where
                         <*> elements ["", "$"]
                         <*> elements ["", "%"]
                         <*> elements ["", " ", ","]
+                        <*> elements [ SingleRepeated 3
+                                     , SingleRepeated 4
+                                     , HeadPlusRepeated 3 2]
                         <*> elements ["."]
                         <*> arbitrary
     -- For some reason if we use Nothing for _nfPrec we get failures that
@@ -108,6 +111,12 @@ spec = do
                          & nfPrec .~ Just (1, Decimals)
                          & nfPrefix .~ "$") 1234567 `shouldBe`
             "$1.234.567,0"
+        it "indian separators work properly" $ do
+          formatNum (def & nfThouSep .~ ","
+                         & nfPrefix .~ "₹"
+                         & nfPrec .~ Just (0, Decimals)
+                         & nfGrouping .~ HeadPlusRepeated 3 2) 123456789 `shouldBe`
+            "₹12,34,56,789"
         it "usdFmt is correct" $ do
           formatNum usdFmt 1234567.821 `shouldBe` "$1,234,567.82"
         prop "matches double-conversion" matchesDoubleConversion
@@ -149,3 +158,9 @@ spec = do
                          & nfPrec .~ Just (1, Decimals)
                          & nfPrefix .~ "$") 1234567 `shouldBe`
             "$1.234.567,0"
+        it "indian separators work properly" $ do
+          formatIntegral (def & nfThouSep .~ ","
+                         & nfPrefix .~ "₹"
+                         & nfPrec .~ Just (0, Decimals)
+                         & nfGrouping .~ HeadPlusRepeated 3 2) 123456789 `shouldBe`
+            "₹12,34,56,789"

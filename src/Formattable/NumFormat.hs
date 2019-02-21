@@ -24,6 +24,7 @@ module Formattable.NumFormat
     , formatIntegral
     , formatPct
     , NumFormat(..)
+    , DigitGroups(..)
     , NumStyle(..)
     , autoStyle
     , PrecisionType(..)
@@ -41,6 +42,7 @@ module Formattable.NumFormat
     , nfPrefix
     , nfSuffix
     , nfThouSep
+    , nfGrouping
     , nfDecSep
     , nfStyle
     , nfPrec
@@ -137,6 +139,8 @@ data NumFormat = NumFormat
       -- ^ A suffix for the number.  Percent, for example.
     , _nfThouSep  :: Text
       -- ^ The character to use as thousands separator if applicable.
+    , _nfGrouping :: DigitGroups
+      -- ^ The sizes of the digit groups separated by '_nfThouSep'.
     , _nfDecSep   :: Text
       -- ^ Character to use for the decimal separator.
     , _nfStyle    :: NumStyle
@@ -146,6 +150,25 @@ data NumFormat = NumFormat
     , _nfNegStyle :: NegativeStyle
       -- ^ Styles for negative numbers
     } deriving (Eq,Show,Typeable)
+
+-- | Represents how to group digits, e.g
+--
+-- >>> let english = SingleRepeated 3
+-- >>> let indian = HeadPlusRepeated 3 2
+-- >>> formatNum (intFmt & nfGrouping .~ english) 123456789
+-- 123,456,789
+-- >>> formatNum (intFmt & nfGrouping .~ indian) 123456789
+-- 12,34,56,789
+data DigitGroups
+  = SingleRepeated Int
+   -- ^ All of the groups have the same size.
+  | HeadPlusRepeated Int Int
+   -- ^ The first group has a different number of digits from the rest.
+  deriving (Eq, Show)
+
+groupsAsList :: DigitGroups -> [Int]
+groupsAsList (SingleRepeated x) = repeat x
+groupsAsList (HeadPlusRepeated x y) = x : repeat y
 
 nfUnits :: Lens NumFormat NumFormat Double Double
 nfUnits = lens _nfUnits setter
@@ -166,6 +189,11 @@ nfThouSep :: Lens NumFormat NumFormat Text Text
 nfThouSep = lens _nfThouSep setter
   where
     setter sc v = sc { _nfThouSep = v }
+
+nfGrouping :: Lens NumFormat NumFormat DigitGroups DigitGroups
+nfGrouping = lens _nfGrouping setter
+  where
+    setter sc v = sc { _nfGrouping = v }
 
 nfDecSep :: Lens NumFormat NumFormat Text Text
 nfDecSep = lens _nfDecSep setter
@@ -190,7 +218,7 @@ nfNegStyle = lens _nfNegStyle setter
 
 ------------------------------------------------------------------------------
 instance Default NumFormat where
-    def = NumFormat 1 "" "" "" "." autoStyle
+    def = NumFormat 1 "" "" "" (SingleRepeated 3) "." autoStyle
                     (Just $ (3, Decimals)) NegMinusSign
 
 
@@ -258,6 +286,7 @@ percentFmt = def { _nfSuffix = "%"
 -- | Common format for generic numeric quantities of the form 123,456.99.
 numFmt :: NumFormat
 numFmt = def { _nfThouSep = ","
+             , _nfGrouping = SingleRepeated 3
              , _nfPrec = Just (2, Decimals)
              }
 
@@ -291,7 +320,7 @@ formatIntegral NumFormat{..} noUnits =
     addPrefix $
     addSuffix $
     addDecimal _nfDecSep $
-    addThousands _nfThouSep $
+    addThousands _nfThouSep _nfGrouping $
     maybe id limitPrecision _nfPrec $
     formatted siUnitized
   where
@@ -377,7 +406,7 @@ formatNumGeneric fmtExp fmtFixed NumFormat{..} noUnits =
     addPrefix $
     addSuffix $
     addDecimal _nfDecSep $
-    addThousands _nfThouSep $
+    addThousands _nfThouSep _nfGrouping $
     maybe id limitPrecision _nfPrec $
     stripZeros precArg $
     mkRawNum noUnits $
@@ -514,12 +543,14 @@ addSign NegParens t = T.concat ["(", t, ")"]
 
 
 -------------------------------------------------------------------------------
-addThousands :: Text -> RawNum a -> RawNum a
-addThousands "" raw = raw
-addThousands sep (RawNum x n d e) = RawNum x n' d e
+addThousands :: Text -> DigitGroups -> RawNum a -> RawNum a
+addThousands "" _ raw = raw
+addThousands sep groups (RawNum x n d e) = RawNum x n' d e
   where
-    n' = T.reverse . T.intercalate sep . T.chunksOf 3 . T.reverse $ n
-
+    n' = T.reverse . T.intercalate sep . chunks (groupsAsList groups) . T.reverse $ n
+    chunks [] _ = error "Impossible by construction of DigitGroups"
+    chunks _ "" = []
+    chunks (g:gs) t = (T.take g t) : chunks gs (T.drop g t)
 
 ------------------------------------------------------------------------------
 addDecimal :: (Eq a, Num a) => Text -> RawNum a -> Text
@@ -559,5 +590,3 @@ integralDigit n
   | n < 10 = chr $ ord '0' + fromIntegral n
   | n < 36 = chr $ ord 'a' + fromIntegral n - 10
   | otherwise = error "integralDigit: not a digit"
-
-
