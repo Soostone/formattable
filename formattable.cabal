@@ -62,6 +62,7 @@ Test-Suite testsuite
     , old-locale
     , text
     , time
+    , time-locale-compat
 
 source-repository head
   type:     git
