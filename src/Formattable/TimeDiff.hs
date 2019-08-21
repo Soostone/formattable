@@ -16,9 +16,9 @@
 module Formattable.TimeDiff where
 
 ------------------------------------------------------------------------------
-import           Data.Monoid
-import           Data.Text (Text)
-import qualified Data.Text as T
+import           Data.Monoid   as M
+import           Data.Text     (Text)
+import qualified Data.Text     as T
 import           Data.Time
 #if !MIN_VERSION_time(1,5,0)
 import           System.Locale
@@ -63,7 +63,7 @@ englishDiff d =
       [] -> "just now"
       (t,str):_ -> let n = round (abs d / t) :: Integer
                     in addInAgo $
-                         T.unwords [T.pack $ show n, str] <>
+                         T.unwords [T.pack $ show n, str] M.<>
                          if n >= 2 then "s" else ""
   where
     addInAgo = if d > 0 then (<>" ago") else ("in "<>)

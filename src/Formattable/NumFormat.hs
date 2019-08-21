@@ -52,11 +52,11 @@ module Formattable.NumFormat
 
 
 -------------------------------------------------------------------------------
-import           Control.Applicative
+import           Control.Applicative as A
 import           Data.Char
 import           Data.Default.Class
 import           Data.Maybe
-import           Data.Monoid
+import           Data.Monoid         as M
 import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           Data.Typeable
@@ -66,7 +66,7 @@ import           Numeric
 
 type Lens s t a b = forall f. Functor f => (a -> f b) -> s -> f t
 lens :: (s -> a) -> (s -> b -> t) -> Lens s t a b
-lens sa sbt afb s = sbt s <$> afb (sa s)
+lens sa sbt afb s = sbt s A.<$> afb (sa s)
 
 
 
@@ -190,8 +190,16 @@ nfNegStyle = lens _nfNegStyle setter
 
 ------------------------------------------------------------------------------
 instance Default NumFormat where
-    def = NumFormat 1 "" "" "" "." autoStyle
-                    (Just $ (3, Decimals)) NegMinusSign
+    def = NumFormat
+      { _nfUnits = 1
+      , _nfPrefix = ""
+      , _nfSuffix = ""
+      , _nfThouSep = ""
+      , _nfDecSep = "."
+      , _nfStyle = autoStyle
+      , _nfPrec = Just (3, Decimals)
+      , _nfNegStyle = NegMinusSign
+      }
 
 
 ------------------------------------------------------------------------------
@@ -304,7 +312,7 @@ formatIntegral NumFormat{..} noUnits =
                                            (exponentialInt precArg)
                   SIStyle -> fixedInt precArg
                   SmartSI _ _ -> fixedInt precArg
-    addPrefix x = _nfPrefix <> x
+    addPrefix x = _nfPrefix M.<> x
     addSuffix x1 = let x2 = x1 <> siSuffix in x2 <> _nfSuffix
     precArg = maybe (-1) fst _nfPrec
     (e, siSuffix) = case _nfStyle of

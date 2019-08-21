@@ -18,6 +18,10 @@ Build-type:          Simple
 Cabal-version:       >= 1.10
 
 
+Flag lib-Werror
+  default: False
+  manual: True
+
 Library
   Exposed-modules:
     Formattable
@@ -37,18 +41,23 @@ Library
     , time-locale-compat
 
   ghc-options: -Wall -fwarn-tabs
+  if flag(lib-Werror)
+    ghc-options: -Werror
   default-language: Haskell2010
 
 
 Test-Suite testsuite
   type: exitcode-stdio-1.0
   hs-Source-Dirs: src test
-  ghc-Options: -Wall -fhpc -threaded -fbreak-on-exception
+  ghc-options: -Wall -threaded -fbreak-on-exception
+  if flag(lib-Werror)
+    ghc-options: -Werror
   main-Is: Spec.hs
 
   other-modules:
     Formattable
     Formattable.NumFormat
+    NumFormatSpec
 
   build-depends:
       HUnit                    >= 1.2

@@ -5,3 +5,4 @@ dist
 *.o
 .stack-work
 *.tix
+stack.yaml.lock

@@ -29,7 +29,6 @@ import qualified Data.Text               as T
 import           Data.Time
 import qualified Data.Time.Locale.Compat as LC
 import           Data.Word
-import           Data.Time
 -------------------------------------------------------------------------------
 import           Formattable.NumFormat
 -------------------------------------------------------------------------------
