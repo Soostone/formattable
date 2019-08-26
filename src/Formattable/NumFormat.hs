@@ -35,6 +35,7 @@ module Formattable.NumFormat
     , percentFmt
     , numFmt
     , usdFmt
+    , bytesFmt
 
     -- * Lenses
     , nfUnits
@@ -90,6 +91,8 @@ data NumStyle
       -- ^ Like SIStyle but only applies the SI prefix if the number to be
       -- formatted falls within the range [a,b] given by the SmartSI
       -- arguments.
+    | BinarySIStyle
+    | SmartBinarySI Double Double
   deriving (Eq,Show)
 
 
@@ -279,6 +282,14 @@ usdFmt = def { _nfPrefix = "$"
              , _nfStyle = Fixed
              }
 
+------------------------------------------------------------------------------
+-- | Common format for data sizes / memory quantities of the form 2.5KiB.
+bytesFmt :: NumFormat
+bytesFmt = def { _nfSuffix = "B"
+               , _nfThouSep = ","
+               , _nfPrec = Just (0, Decimals)
+               , _nfStyle = BinarySIStyle
+               }
 
 -------------------------------------------------------------------------------
 -- | Convenience wrapper for percentages that lets you easily control the
@@ -312,14 +323,23 @@ formatIntegral NumFormat{..} noUnits =
                                            (exponentialInt precArg)
                   SIStyle -> fixedInt precArg
                   SmartSI _ _ -> fixedInt precArg
+                  BinarySIStyle -> fixedInt precArg
+                  SmartBinarySI _ _ -> fixedInt precArg
     addPrefix x = _nfPrefix M.<> x
-    addSuffix x1 = let x2 = x1 <> siSuffix in x2 <> _nfSuffix
+    addSuffix x1 = let x2 = x1 <> suffix in x2 <> _nfSuffix
     precArg = maybe (-1) fst _nfPrec
-    (e, siSuffix) = case _nfStyle of
-                      SIStyle -> siPrefixIntegral a
-                      SmartSI lo hi -> if fromIntegral a > lo && fromIntegral a < hi then siPrefixIntegral a else (0, "")
-                      _ -> (0, "")
-    siUnitized = a `div` 10^e
+    (base, (e, suffix)) =
+        case _nfStyle of
+          SIStyle -> (10, siPrefixIntegral a)
+          SmartSI lo hi -> if fromIntegral a > lo && fromIntegral a < hi
+                             then (10, siPrefixIntegral a)
+                             else (10, (0, ""))
+          BinarySIStyle -> (2, binarySiPrefixIntegral a)
+          SmartBinarySI lo hi -> if fromIntegral a > lo && fromIntegral a < hi
+                                   then (2, binarySiPrefixIntegral a)
+                                   else (2, (0, ""))
+          _ -> (10, (0, ""))
+    siUnitized = a `div` base^e
 
 
 -- The following two functions skip the double-conversion library and let us
@@ -398,14 +418,23 @@ formatNumGeneric fmtExp fmtFixed NumFormat{..} noUnits =
                   SmartExponent lo hi -> smartStyle lo hi (fmtFixed precArg) (fmtExp precArg)
                   SIStyle -> fmtFixed precArg
                   SmartSI _ _ -> fmtFixed precArg
+                  BinarySIStyle -> fmtFixed precArg
+                  SmartBinarySI _ _ -> fmtFixed precArg
     addPrefix x = _nfPrefix <> x
-    addSuffix x1 = let x2 = x1 <> siSuffix in x2 <> _nfSuffix
+    addSuffix x1 = let x2 = x1 <> suffix in x2 <> _nfSuffix
     precArg = fst <$> _nfPrec
-    (e, siSuffix) = case _nfStyle of
-                      SIStyle -> siPrefix a
-                      SmartSI lo hi -> if a > lo && a < hi then siPrefix a else (0, "")
-                      _ -> (0, "")
-    siUnitized = a / 10**(fromIntegral e)
+    (base, (e, suffix)) =
+        case _nfStyle of
+          SIStyle -> (10, siPrefix a)
+          SmartSI lo hi -> if a > lo && a < hi
+                             then (10, siPrefix a)
+                             else (10, (0, ""))
+          BinarySIStyle -> (2, binarySiPrefix a)
+          SmartBinarySI lo hi -> if a > lo && a < hi
+                                   then (2, binarySiPrefix a)
+                                   else (2, (0, ""))
+          _ -> (10, (0, ""))
+    siUnitized = a / base**(fromIntegral e)
 
 
 stripZeros :: Maybe Int -> RawNum a -> RawNum a
@@ -427,6 +456,17 @@ siPrefixIntegral x
   | abs x > 10^(3::Int) = (3, "k")
   | otherwise = (0, "")
 
+binarySiPrefixIntegral :: Integral a => a -> (Int, Text)
+binarySiPrefixIntegral x
+  | abs x > 2^(80::Int) = (80, "Yi")
+  | abs x > 2^(70::Int) = (70, "Zi")
+  | abs x > 2^(60::Int) = (60, "Ei")
+  | abs x > 2^(50::Int) = (50, "Pi")
+  | abs x > 2^(40::Int) = (40, "Ti")
+  | abs x > 2^(30::Int) = (30, "Gi")
+  | abs x > 2^(20::Int) = (20, "Mi")
+  | abs x > 2^(10::Int) = (10, "Ki")
+  | otherwise = (0, "")
 
 siPrefix :: Double -> (Int, Text)
 siPrefix x
@@ -448,6 +488,8 @@ siPrefix x
   | abs x > (1.0 / 1e21) = (-21, "z")
   | otherwise = (-24, "y")
 
+binarySiPrefix :: Double -> (Int, Text)
+binarySiPrefix x = binarySiPrefixIntegral (round x :: Integer)
 
 ------------------------------------------------------------------------------
 -- | A "pre-format" function that intelligently chooses between fixed and

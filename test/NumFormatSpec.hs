@@ -149,3 +149,13 @@ spec = do
                          & nfPrec .~ Just (1, Decimals)
                          & nfPrefix .~ "$") 1234567 `shouldBe`
             "$1.234.567,0"
+    describe "formatIntegral/binary" $ do
+      it "doesn't show exponent for zero" $ do
+        formatIntegral bytesFmt 0 `shouldBe` "0B"
+      it "works for the simple case" $ do
+        formatIntegral bytesFmt 123 `shouldBe` "123B"
+      it "works for kilobytes" $ do
+        formatIntegral bytesFmt 123000 `shouldBe` "120KiB"
+      it "works for megabytes" $ do
+        formatIntegral bytesFmt 123456789 `shouldBe` "117MiB"
+
